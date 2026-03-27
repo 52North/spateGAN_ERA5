@@ -37,6 +37,10 @@ from src.spategan_era5.utils import (
     haversine,
 )
 
+from src.spategan_era5.plotting import (
+    Plots
+)
+
 __all__ = [
     # Model
     "Generator",
@@ -62,6 +66,8 @@ __all__ = [
     "haversine",
     "DataInterpolation",
     "generate_output_filename",
+    # Plotting
+    "Plots"
 ]
 
 __version__ = "0.1.0"
