@@ -50,6 +50,7 @@ plots/*.png
 
 # Large data files (keep tracked test data)
 *.nc
+data/*
 !data/x_test.nc
 !data/y_test.nc
 
