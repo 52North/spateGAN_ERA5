@@ -102,14 +102,14 @@ class Plots:
             interval_dict = plotting_cfg.get("forecast_intervals", {})
             if "precipitation" in self.predictions_utm.data_vars:
                 start = 0
-                max_h = self.predictions_utm.time.size
+                max_h = self.predictions_utm.time.size // 6
                 for day, interval in sorted(interval_dict.items()):
                     end = day * 24
                     sums = []
                     labels = []
 
                     for h in range(start, end, interval):
-                        chunk = self.predictions_utm.isel(time=slice(h, h + interval))
+                        chunk = self.predictions_utm.isel(time=slice(h * 6 , (h + interval) * 6))
                         if chunk.time.size > 0:
                             sums.append((chunk['precipitation'] / 6).sum(dim="time"))
                             labels.append(f"+{h}h {interval}h sum")
