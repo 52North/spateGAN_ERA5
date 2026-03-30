@@ -79,5 +79,10 @@ processing:
 plotting:
   # enable plotting precipitation sum maps
   precipitation_sums: true
+  forecast_plots: true
+  # schema {day: interval} {1: 2, 5: 3, 10: 8} means 1. day every 2h; 2.-5. day every 3h; 6.-10. every 8h
+  # will create a plot for each set
+  # if timeseries is smaller input will be discarded; if bigger 24h intervals will be used
+  forecast_intervals: { 1: 2, 5: 6, 15: 12 }
 
 
