@@ -32,7 +32,7 @@ def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
     ds['lsp'] = ds['tp'] - ds['cp']
 
     ds_hourly = ds.resample(time="1h").interpolate(kind='linear')
-    ds_hourly_rate = ds_hourly.diff(dim="time")
+    ds_hourly_rate = (ds_hourly.shift(time=-1) - ds_hourly).dropna(dim="time")
 
     logger.info(f"Data Units: '{ds['tp'].attrs.get('units')}'")
 
@@ -45,3 +45,16 @@ def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
     ds_spateGAN.to_netcdf(clean_filename)
 
     return clean_filename
+
+#
+# ds = xr.open_dataset("/work/PROJEKTE/VELOCITYADAPT/code/spateGAN/data/aifs/ecmwf_20260330_aifs.grib2")
+# ds = ds.rename({
+#     'valid_time': 'time',
+#     'time': 'start_time',
+# })
+# ds = ds.swap_dims({'step': 'time'})
+# ds['lsp'] = ds['tp'] - ds['cp']
+#
+# ds_hourly = ds.resample(time="1h").interpolate(kind='linear')
+# ds_hourly_rate2 = (ds_hourly.shift(time=-1) - ds_hourly).dropna(dim="time")
+# ds_hourly_rate = ds_hourly.diff(dim="time")
