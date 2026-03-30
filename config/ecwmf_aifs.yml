@@ -7,7 +7,7 @@
 # ============================================================================
 data:
   # Input netCDF ERA5 data (lat-lon projection, typically from Copernicus)
-  input_path: data/aifs/ecwmf_20260326_clean.nc # define path to input netCDF file here, e.g., "data/era5_input.nc"
+  input_path: data/aifs/ecwmf_20260327_clean.nc # define path to input netCDF file here, e.g., "data/era5_input.nc"
   # Unit of precipitation values in the input file. Examples: 'm', 'm/s', 'm/hr', 'mm/hr'
   precip_unit: 'm'
 
@@ -66,7 +66,7 @@ inference:
 # ============================================================================
 processing:
   # Device: 'cuda' or 'cpu'
-  device: 'cuda'
+  device: 'cpu'
   
   # Seed for reproducibility and probabilistic downscaling
   # Fixed seed for long time series can lead to local extreme values
@@ -78,6 +78,11 @@ processing:
 # ============================================================================
 plotting:
   # enable plotting precipitation sum maps
-  precipitation_sums: true
+  precipitation_sums: false
+  forecast_plots: true
+  # schema {day: interval} {1: 2, 5: 3, 10: 8} means 1. day every 2h; 2.-5. day every 3h; 6.-10. every 8h
+  # will create a plot for each set
+  # if timeseries is smaller input will be discarded; if bigger 24h intervals will be used
+  forecast_intervals: {1: 2, 5: 6, 15: 12}
 
 

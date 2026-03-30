@@ -23,6 +23,9 @@ from src.spategan_era5.projection import (
     prediction_output_dataset,
     utm_to_latlon,
 )
+from src.spategan_era5.plotting import (
+    Plots
+)
 from src.spategan_era5.utils import generate_output_filename
 
 logger = logging.getLogger(__name__)
@@ -242,77 +245,6 @@ def save_outputs(
             logger.info("Saved: %s", output_utm_dir / filename_era)
 
 
-def _create_precipitation_sums_plot(
-    predictions_utm: xr.Dataset,
-    ds_utm_28: xr.Dataset,
-    project_root: Path,
-    config: dict,
-) -> None:
-    """Create a simple side-by-side precipitation sums plot.
-
-    Left: (ds_utm_28.cp + ds_utm_28.lsp).sum(dim='time')
-    Right: predictions_utm.precipitation.sum(dim='time')
-
-    Saves PNG to `project_root / plots` (or config['data']['plots_path']).
-    """
-    plotting_cfg = config.get("plotting", {})
-    if not plotting_cfg.get("precipitation_sums", False):
-        return
-
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        left = None
-        if ("cp" in ds_utm_28.data_vars) and ("lsp" in ds_utm_28.data_vars):
-            left = (ds_utm_28["cp"] + ds_utm_28["lsp"]).sum(dim="time")
-            left = left[8:-8, 8:-8]
-        else:
-            logger.warning("ds_utm_28 missing 'cp' and/or 'lsp' variables; left plot will be empty")
-
-        right = None
-        if "precipitation" in predictions_utm.data_vars:
-            right = (predictions_utm["precipitation"]/6).sum(dim="time") # /6 since 6 time steps per hour
-        else:
-            logger.warning("predictions_utm missing 'precipitation' variable; right plot will be empty")
-
-        if (left is None) and (right is None):
-            logger.warning("No data available for precipitation sums plotting; skipping")
-            return
-
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-        if left is not None:
-            left.plot(ax=axes[0], cmap="turbo")
-            axes[0].set_title("Input (target domain) precipitation sum (cp + lsp) - mm")
-        else:
-            axes[0].axis("off")
-
-        if right is not None:
-            right.plot(ax=axes[1], cmap="turbo")
-            axes[1].set_title("Predicted precipitation sum - mm")
-        else:
-            axes[1].axis("off")
-
-        plt.tight_layout()
-
-        plots_dir = (
-            project_root / config.get("data", {}).get("plots_path", "plots")
-        )
-        plots_dir.mkdir(parents=True, exist_ok=True)
-        plot_name = generate_output_filename(predictions_utm, config, projection="utm")
-        plot_name = "precip_sums_" + plot_name.replace(".nc", ".png")
-        out_path = plots_dir / plot_name
-        fig.savefig(out_path, dpi=150)
-        plt.close(fig)
-
-        logger.info("Saved precipitation sums plot to %s", out_path)
-
-    except Exception as e:
-        logger.exception("Error creating precipitation sums plot: %s", e)
-
-
 def fill_nans_if_sparse(ds: xr.Dataset, threshold=0.01) -> xr.Dataset:
     # total number of values across all variables
     total_values = sum(da.size for da in ds.data_vars.values())
@@ -382,6 +314,15 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
     predictions_utm = run_inference(ds_utm_28, ds_utm_336, config)
     
     # Stage 4: Plot precipitation maps (optional)
+    # Optional simple plotting
+    try:
+        plot = Plots(predictions_utm, ds_utm_28, project_root, config)
+        plot.create_precipitation_sums_plot()
+        plot.plot_forecast()
+
+    except Exception:
+        # _create_precipitation_sums_plot logs its own errors
+        pass
     
     # Stage 5: Save outputs
     output_utm_dir = (
@@ -402,11 +343,5 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
         save_model_input=config["data"].get("save_model_input", False),
     )
 
-    # Optional simple plotting
-    try:
-        _create_precipitation_sums_plot(predictions_utm, ds_utm_28, project_root, config)
-    except Exception:
-        # _create_precipitation_sums_plot logs its own errors
-        pass
-    
+
     logger.info("Downscaling pipeline completed successfully!")
