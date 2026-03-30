@@ -34,10 +34,7 @@ dependencies = [
     "pandas>=2.0.0",
     "ipykernel",
     "pytest",
-<<<<<<< HEAD
     "cdsapi>=0.7.7",
-=======
->>>>>>> origin/ecwmf_aifs
     "eccodes>=2.46.0",
     "cfgrib>=0.9.15.1",
     "ecmwf-opendata>=0.3.26",
