@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
     """Download and prepare AIFS data."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    raw_filename = out_dir / f"ecwmf_{date}_aifs.grib2"
-    clean_filename = out_dir / f"ecwmf_{date}_clean.nc"
+    raw_filename = out_dir / f"ecmwf_{date}_aifs.grib2"
+    clean_filename = out_dir / f"ecmwf_{date}_clean.nc"
 
-    logger.info("Downloading AIFS data for date %s and steps %s", date, forecast_steps)
+    logger.info(f"Downloading AIFS data for date '{date}' and steps '{forecast_steps}'")
     client = Client(source="ecmwf", model="aifs-single")
     client.retrieve(
             date=date,
@@ -34,14 +34,14 @@ def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
     ds_hourly = ds.resample(time="1h").interpolate(kind='linear')
     ds_hourly_rate = ds_hourly.diff(dim="time")
 
-    logger.info("Data Units: %s", ds['tp'].attrs.get('units'))
+    logger.info(f"Data Units: '{ds['tp'].attrs.get('units')}'")
 
     if ds['tp'].attrs.get('units') == 'kg m**-2':
         ds_mm = ds_hourly_rate / 1000
     else:
         ds_mm = ds_hourly_rate
 
-    ds_spateGAN = ds_mm[['cp', 'lsp']]
+    ds_spateGAN = ds_mm[['cp', 'lsp']].clip(min=0)
     ds_spateGAN.to_netcdf(clean_filename)
 
     return clean_filename
