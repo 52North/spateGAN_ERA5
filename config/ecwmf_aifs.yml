@@ -7,20 +7,27 @@
 # ============================================================================
 data:
   # Input netCDF ERA5 data (lat-lon projection, typically from Copernicus)
-  input_path: data/aifs/ecwmf_20260327_clean.nc # define path to input netCDF file here, e.g., "data/era5_input.nc"
+  # Will be overwritten if download_aifs is true
+  input_path: "data/era5_input.nc" # define path to input netCDF file here, e.g., "data/era5_input.nc"
   # Unit of precipitation values in the input file. Examples: 'm', 'm/s', 'm/hr', 'mm/hr'
   precip_unit: 'm'
 
+  download_aifs: true
+  aifs_out_dir: "./data/aifs/"
+  forecast_date:  # start date
+  forecast_stop: 72 # hours leadtime
+#  forecast_step: 6
+
   # Output paths
   output_utm_path: output/utm/ #"output/utm/"      # High-res output in UTM projection if null no utm output saved
-  output_latlon_path: output/wgs84  # High-res output reprojected to lat-lon if null no lat-lon output saved
+  output_latlon_path: output/wgs84/  # High-res output reprojected to lat-lon if null no lat-lon output saved
   save_model_input: true  # Save the model input data along with predictions to defined output_(latlon,utm)_path
-  
+
   # Model weights
   model_weights_path: "model_weights/model_weights.pt"
   # Patches spanning across multiple UTM zones lead to projection issues and NaNs.
   nan_fill_threshold: 0.02  # Fraction of NaNs in patch above which no filling is done (e.g., 0.01 = 1%)
-  
+
 # ============================================================================
 # Domain Configuration
 # ============================================================================
@@ -37,7 +44,7 @@ time:
   # If null, the entire dataset is processed
   start_date: null  # e.g., '2010-01-01T06:00:00.000000000'
   end_date: null    # e.g., '2010-01-05T06:00:00.000000000'
-  
+
 
 # ============================================================================
 # Projection Configuration
@@ -45,7 +52,7 @@ time:
 projection:
   # UTM projection settings
   utm_zone: null  # Auto-detect if null, else specify as integer (e.g., 32)
-  
+
   # Extra padding for slicing (cells)
   # Data is sliced slightly larger than needed to ensure coverage
   extra_padding_cells: 2
@@ -56,18 +63,18 @@ projection:
 # ============================================================================
 inference:
   # Sliding stride in hours for moving the input window (default 1 hour)
-  stride_hours: 1 # 1-8 hours, smaller = more continous predictions, can also be used for probabilistic downscaling
+  stride_hours: 8 # 1-8 hours, smaller = more continous predictions, can also be used for probabilistic downscaling
 
   # Apply final ERA5 constraint to correct deviations due to striding strategy
-  final_era_constraint: true  
+  final_era_constraint: true
 
 # ============================================================================
 # Processing Configuration
 # ============================================================================
 processing:
   # Device: 'cuda' or 'cpu'
-  device: 'cpu'
-  
+  device: 'cuda'
+
   # Seed for reproducibility and probabilistic downscaling
   # Fixed seed for long time series can lead to local extreme values
   # Use varying seed (-1) for variability of local extremes
@@ -83,6 +90,6 @@ plotting:
   # schema {day: interval} {1: 2, 5: 3, 10: 8} means 1. day every 2h; 2.-5. day every 3h; 6.-10. every 8h
   # will create a plot for each set
   # if timeseries is smaller input will be discarded; if bigger 24h intervals will be used
-  forecast_intervals: {1: 2, 5: 6, 15: 12}
+  forecast_intervals: { 1: 2, 5: 6, 15: 12 }
 
 

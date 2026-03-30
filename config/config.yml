@@ -7,13 +7,14 @@
 # ============================================================================
 data:
   # Input netCDF ERA5 data (lat-lon projection, typically from Copernicus)
-  input_path: "data/era5_input.nc" # define path to input netCDF file here, e.g., "data/era5_input.nc" # Will be overwritten if download_aifs is true
+  # Will be overwritten if download_aifs is true
+  input_path: "data/era5_input.nc" # define path to input netCDF file here, e.g., "data/era5_input.nc"
   # Unit of precipitation values in the input file. Examples: 'm', 'm/s', 'm/hr', 'mm/hr'
   precip_unit: 'm'
 
-  download_aifs: true
+  download_aifs: false
   aifs_out_dir: "./data/aifs/"
-  forecast_date:  # start dtae
+  forecast_date:  # start date
   forecast_stop: 72 # hours leadtime
 #  forecast_step: 6
 
