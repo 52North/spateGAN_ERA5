@@ -3,6 +3,7 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+import pandas as pd
 import xarray as xr
 
 from src.spategan_era5.utils import generate_output_filename
@@ -111,8 +112,9 @@ class Plots:
                     for h in range(start, end, interval):
                         chunk = self.predictions_utm.isel(time=slice(h * 6 , (h + interval) * 6))
                         if chunk.time.size > 0:
+                            start_time = pd.Timestamp(chunk.time.values[0]).strftime("%d.%m.%y %H:%M")
                             sums.append((chunk['precipitation'] / 6).sum(dim="time"))
-                            labels.append(f"+{h}h {interval}h sum")
+                            labels.append(f"+{h}h {interval}h sum \n {start_time}")
 
                     if len(sums) > 0:
                         da = xr.concat(sums, dim="time").assign_coords(time=labels)
