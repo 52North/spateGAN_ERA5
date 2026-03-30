@@ -123,18 +123,18 @@ def main() -> int:
     if config.get("data", {}).get("download_aifs", False):
             aifs_out_dir = Path(config.get("data", {}).get("aifs_out_dir", "./data/aifs"))
 
-            f_date = config.get("data", {}).get("forecast_date", datetime.now().strftime("%Y%m%d"))
-            f_stop = config.get("data", {}).get("forecast_stop", 32)
+            f_date = config.get("data", {}).get("forecast_date", None) or datetime.now().strftime("%Y%m%d")
+            f_stop = config.get("data", {}).get("forecast_stop", 72)
             f_step = config.get("data", {}).get("forecast_step", 6)
 
-            f_steps = list(range(0, f_stop, f_step))
+            f_steps = list(range(0, f_stop + f_step, f_step))
 
             try:
                 from src.spategan_era5.download import prepare_ecmwf_data
                 processed_file = prepare_ecmwf_data(aifs_out_dir, f_date, f_steps)
                 config["data"]["input_path"] = str(processed_file)
             except Exception as e:
-                logger.error("Failed to prepare AIFS data: %s", e)
+                logger.error(f"Failed to prepare AIFS data: {e}")
                 return 1
 
     logger.info("Starting downscaling: center=(%.2f°N, %.2f°E), device=%s",
