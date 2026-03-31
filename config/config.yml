@@ -73,7 +73,7 @@ inference:
 # ============================================================================
 processing:
   # Device: 'cuda' or 'cpu'
-  device: 'cuda'
+  device: 'cpu'
 
   # Seed for reproducibility and probabilistic downscaling
   # Fixed seed for long time series can lead to local extreme values

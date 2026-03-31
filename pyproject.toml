@@ -39,6 +39,7 @@ dependencies = [
     "cfgrib>=0.9.15.1",
     "ecmwf-opendata>=0.3.26",
     "ecmwf-api-client>=1.6.5",
+    "cartopy>=0.25.0",
 ]
 
 [project.optional-dependencies]
