@@ -12,9 +12,9 @@ data:
   # Unit of precipitation values in the input file. Examples: 'm', 'm/s', 'm/hr', 'mm/hr'
   precip_unit: 'm'
 
-  download_aifs: false
+  download_aifs: true
   aifs_out_dir: "./data/aifs/"
-  forecast_date:  # start date
+  forecast_date:  '2026-03-01' # start date, empty if current date is wanted
   forecast_stop: 72 # hours leadtime
 #  forecast_step: 6
 
