@@ -3,12 +3,19 @@ name = "spategan-era5"
 version = "0.1.0"
 description = "spateGAN-ERA5: Deep learning framework for ERA5 precipitation downscaling from 24km/1hr to 2km/10min"
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 authors = [
     { name = "Luca Glawion" },
     { name = "Julius Polz", email = "julius.polz@kit.edu" },
 ]
-keywords = ["deep-learning", "precipitation", "downscaling", "ERA5", "GAN", "weather"]
+keywords = [
+    "deep-learning",
+    "precipitation",
+    "downscaling",
+    "ERA5",
+    "GAN",
+    "weather",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -34,12 +41,9 @@ dependencies = [
     "pandas>=2.0.0",
     "ipykernel",
     "pytest",
-    "cdsapi>=0.7.7",
     "eccodes>=2.46.0",
     "cfgrib>=0.9.15.1",
     "ecmwf-opendata>=0.3.26",
-    "ecmwf-api-client>=1.6.5",
-    "cartopy>=0.25.0",
 ]
 
 [project.optional-dependencies]
@@ -71,11 +75,7 @@ packages = ["src/spategan_era5"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = [
-    "-v",
-    "--tb=short",
-    "-ra",
-]
+addopts = ["-v", "--tb=short", "-ra"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
@@ -103,16 +103,16 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "F",    # pyflakes
-    "I",    # isort
-    "N",    # pep8-naming
-    "W",    # pycodestyle warnings
-    "UP",   # pyupgrade
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-    "SIM",  # flake8-simplify
-    "PTH",  # flake8-use-pathlib
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "PTH", # flake8-use-pathlib
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
