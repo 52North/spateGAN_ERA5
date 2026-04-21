@@ -9,6 +9,8 @@ import itertools
 import yaml
 from datetime import datetime, timedelta
 
+from .analysis import compare_dataset_structures
+
 logger = logging.getLogger(__name__)
 
 def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
@@ -107,50 +109,7 @@ def prepare_era5(out_dir: Path, start_date: str, end_date: str) -> Path:
     ds.to_netcdf(clean_filename)
     return clean_filename
 
-def compare_dataset_structures(file_path_1: Path, file_path_2: Path) -> dict:
-    """Compare variables and dimensions of two datasets and print a formatted table."""
-    engine1 = "cfgrib" if str(file_path_1).endswith(".grib2") else None
-    engine2 = "cfgrib" if str(file_path_2).endswith(".grib2") else None
-
-    ds1 = xr.open_dataset(file_path_1, engine=engine1)
-    ds2 = xr.open_dataset(file_path_2, engine=engine2)
-
-    v_match = list(set(ds1.data_vars).intersection(ds2.data_vars))
-    v_only1 = list(set(ds1.data_vars) - set(ds2.data_vars))
-    v_only2 = list(set(ds2.data_vars) - set(ds1.data_vars))
-
-    d_match = list(set(ds1.dims).intersection(ds2.dims))
-    d_only1 = list(set(ds1.dims) - set(ds2.dims))
-    d_only2 = list(set(ds2.dims) - set(ds1.dims))
-
-    n1, n2 = file_path_1.name, file_path_2.name
-    w = max(len(n1), len(n2), 15)
-
-    def build_table(title, only1, match, only2):
-        lines = [
-            f"\n{title:^{w*3 + 6}}",
-            f"{n1:^{w}} | {'Common':^{w}} | {n2:^{w}}",
-            "-" * (w * 3 + 6)
-        ]
-        for row in itertools.zip_longest(only1, match, only2, fillvalue=""):
-            lines.append(f"{row[0]:^{w}} | {row[1]:^{w}} | {row[2]:^{w}}")
-        lines.append("-" * (w * 3 + 6))
-        return "\n".join(lines)
-
-    # Using print to avoid logger prefixes breaking the table alignment
-    print(build_table(" VARIABLES ", v_only1, v_match, v_only2))
-    print(build_table(" DIMENSIONS ", d_only1, d_match, d_only2))
-
-    return {
-        "matching_variables": v_match,
-        "variables_only_in_ds1": v_only1,
-        "variables_only_in_ds2": v_only2,
-        "matching_dimensions": d_match,
-        "dimensions_only_in_ds1": d_only1,
-        "dimensions_only_in_ds2": d_only2,
-    }
-
-def main():
+def _compare_data():
     logging.basicConfig(level=logging.INFO)
 
     with open("config/config.yml", "r") as f:
@@ -185,4 +144,4 @@ def main():
     return comparison
 
 if __name__ == "__main__":
-    main()
+    _compare_data()

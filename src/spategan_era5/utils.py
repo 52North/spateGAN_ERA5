@@ -11,21 +11,23 @@ from pathlib import Path
 import pandas as pd
 import torch.nn as nn
 
+import xarray as xr
+
 # Earth radius in kilometers (WGS84 mean radius)
 EARTH_RADIUS_KM = 6371.04
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate the great-circle distance between two points on Earth.
-    
+
     Uses the Haversine formula for accurate distance calculation on a sphere.
-    
+
     Args:
         lat1: Latitude of first point in degrees.
         lon1: Longitude of first point in degrees.
         lat2: Latitude of second point in degrees.
         lon2: Longitude of second point in degrees.
-        
+
     Returns:
         Distance between the points in kilometers.
     """
@@ -53,17 +55,17 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 class DataInterpolation(nn.Module):
     """PyTorch module for interpolating 5D tensor data.
-    
+
     Handles both 2D (bicubic/bilinear/nearest) and 3D (trilinear) interpolation
     modes for batch, channel, time, height, width tensors.
-    
+
     Args:
         size: Target output size (height, width) or (time, height, width).
         mode: Interpolation mode ('bicubic', 'bilinear', 'nearest', 'trilinear').
         corners: Whether to align corners in interpolation.
         antialias: Whether to apply antialiasing.
     """
-    
+
     def __init__(
         self,
         size: tuple[int, int] | tuple[int, int, int],
@@ -80,10 +82,10 @@ class DataInterpolation(nn.Module):
 
     def forward(self, x):
         """Interpolate the input tensor.
-        
+
         Args:
             x: Input tensor of shape (B, C, T, H, W).
-            
+
         Returns:
             Interpolated tensor.
         """
@@ -107,7 +109,7 @@ class DataInterpolation(nn.Module):
                 antialias=self.antialias,
             )
         return x
-    
+
 
 def generate_output_filename(
     dataset: "xr.Dataset",
@@ -117,32 +119,32 @@ def generate_output_filename(
 ) -> str:
     """
     Generate output filename based on parameters.
-    
+
     Parameters
     ----------
     dataset: xr.Dataset
         Dataset containing time and coordinate information
     projection : str
         Projection type ('latlon' or 'utm')
-    
+
     Returns
     -------
     str
         Formatted filename
     """
-    
+
     center_lat = dataset.attrs['center_lat']
-    center_lon = dataset.attrs['center_lon'] 
+    center_lon = dataset.attrs['center_lon']
     start_date = dataset.time.values[0]
     end_date = dataset.time.values[-1]
 
     start_date = pd.Timestamp(start_date)
     end_date = pd.Timestamp(end_date)
-    
+
     # Format lat/lon with sign
     lat_str = f"{abs(center_lat):.2f}{'N' if center_lat >= 0 else 'S'}"
     lon_str = f"{abs(center_lon):.2f}{'E' if center_lon >= 0 else 'W'}"
-    
+
     # Format dates
     start_str = start_date.strftime('%Y%m%d')
     end_str = end_date.strftime('%Y%m%d')
@@ -152,5 +154,37 @@ def generate_output_filename(
         filename = f"{model}_{projection}_{lat_str}_{lon_str}_{start_str}_{end_str}.nc"
     else:
         raise ValueError(f"Unknown model type: {model}")
-    
+
     return filename
+
+def _combine_datasets(ds_era5: xr.Dataset, ds_spategan: xr.Dataset) -> xr.Dataset:
+    # Use .copy() to ensure we don't accidentally mutate the original
+    # datasets passed to the function
+    ds_era5 = ds_era5.copy()
+    ds_spategan = ds_spategan.copy()
+
+    # 1. Standardize ERA5 coordinate names
+    ds_era5 = ds_era5.rename({"latitude": "lat", "longitude": "lon"})
+    ds_era5 = ds_era5.rename_vars({var: f"era5_{var}" for var in ds_era5.data_vars})
+    ds_spategan = ds_spategan.rename_vars({"precipitation": "pred_precipitation"})
+
+    # 2. Resample SpateGAN to hourly to match ERA5 time resolution
+    # This sums the six 10-minute intervals within each hour into a single hourly value
+    ds_spategan_hourly = ds_spategan.resample(time="1h").sum(skipna=True)
+
+    # 3. Spatially interpolate ERA5 to match SpateGAN's grid
+    ds_era5_spatial = ds_era5.interp(
+        lat=ds_spategan_hourly.lat,
+        lon=ds_spategan_hourly.lon,
+        method="nearest"
+    )
+
+    # 4. Align by time to keep only overlapping hourly timestamps
+    ds_era5_aligned, ds_spategan_aligned = xr.align(
+        ds_era5_spatial,
+        ds_spategan_hourly,
+        join="inner"
+    )
+
+    # 5. Merge into a single dataset
+    return xr.merge([ds_era5_aligned, ds_spategan_aligned])

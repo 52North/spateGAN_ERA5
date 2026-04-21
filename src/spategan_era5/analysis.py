@@ -1,125 +1,40 @@
+# Add project root to path
+import sys
+
+
+
 import xarray as xr
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+import itertools
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import matplotlib.animation as animation
-
-def visualize_matched_datasets(era5_path: Path | str, spategan_path: Path | str) -> xr.Dataset:
-    ds_era5 = xr.open_dataset(era5_path)
-    ds_spategan = xr.open_dataset(spategan_path)
-
-    # 1. Standardize ERA5 coordinate names
-    ds_era5 = ds_era5.rename({"latitude": "lat", "longitude": "lon"})
-    ds_era5 = ds_era5.rename_vars({var: f"era5_{var}" for var in ds_era5.data_vars})
-    ds_spategan = ds_spategan.rename_vars({"precipitation": "pred_precipitation"})
-
-    # 2. Resample SpateGAN to hourly to match ERA5 time resolution
-    # This sums the six 10-minute intervals within each hour into a single hourly value
-    ds_spategan_hourly = ds_spategan.resample(time="1h").sum(skipna=True)
-
-    # 3. Spatially interpolate ERA5 to match SpateGAN's grid
-    ds_era5_spatial = ds_era5.interp(
-        lat=ds_spategan_hourly.lat,
-        lon=ds_spategan_hourly.lon,
-        method="nearest"
-    )
-
-    # 4. Align by time to keep only overlapping hourly timestamps
-    ds_era5_aligned, ds_spategan_aligned = xr.align(
-        ds_era5_spatial,
-        ds_spategan_hourly,
-        join="inner"
-    )
-
-    # 5. Merge into a single dataset
-    return xr.merge([ds_era5_aligned, ds_spategan_aligned])
-
-import matplotlib.pyplot as plt
+from src.spategan_era5.utils import _combine_datasets
+from src.spategan_era5.plotting import Plots
 
 def visualize_precipitation_map(combined_ds, time_index=4):
-    # Select a single time slice to visualize
+    # Select time slice
     ds_time = combined_ds.isel(time=time_index)
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    # Convert to DataArray to facilitate faceting
+    plot_data = ds_time[["era5_tp", "pred_precipitation"]].to_array()
 
-    # Plot ERA5 ground truth (Total Precipitation 'tp')
-    ds_time["era5_tp"].plot(
-        ax=axes[0],
+    # Use xarray's native plotting with faceting
+    g = plot_data.plot(
+        col="variable",
         cmap="YlGnBu",
-        cbar_kwargs={"label": "Precipitation (ERA5)"}
+        figsize=(14, 6),
+        subplot_kws={"title": ["Ground Truth (ERA5 Interpolated)", "Prediction (SpateGAN)"]}
     )
-    axes[0].set_title("Ground Truth (ERA5 Interpolated)")
 
-    # Plot SpateGAN prediction
-    ds_time["pred_precipitation"].plot(
-        ax=axes[1],
-        cmap="YlGnBu",
-        cbar_kwargs={"label": "Precipitation (SpateGAN)"}
-    )
-    axes[1].set_title("Prediction (SpateGAN)")
-
-    # Add a main title with the current timestamp
+    # Adjust title
     time_str = ds_time.time.dt.strftime("%Y-%m-%d %H:%M").values
-    plt.suptitle(f"Precipitation Comparison at {time_str}")
-    plt.tight_layout()
+    g.fig.suptitle(f"Precipitation Comparison at {time_str}", y=1.05)
+
     plt.show()
 
-def create_precipitation_animation(combined_ds, num_frames=24, save_path=None):
-    if len(combined_ds.time) < num_frames:
-        num_frames = len(combined_ds.time)
-    ds_subset = combined_ds.isel(time=slice(0, num_frames)).copy()
-
-    ds_subset["era5_tp"] = ds_subset["era5_tp"] * 1000
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-
-    era5_max = ds_subset["era5_tp"].max().item()
-    pred_max = ds_subset["pred_precipitation"].max().item()
-    global_max = max(era5_max, pred_max)
-
-    ds_0 = ds_subset.isel(time=0)
-
-    era5_plot = ds_0["era5_tp"].plot(
-        ax=axes[0], cmap="YlGnBu", vmin=0, vmax=global_max,
-        cbar_kwargs={"label": "Precipitation (mm)"}, add_colorbar=True
-    )
-    axes[0].set_title("Ground Truth (ERA5 Interpolated)")
-
-    pred_plot = ds_0["pred_precipitation"].plot(
-        ax=axes[1], cmap="YlGnBu", vmin=0, vmax=global_max,
-        cbar_kwargs={"label": "Precipitation (mm)"}, add_colorbar=True
-    )
-    axes[1].set_title("Prediction (SpateGAN)")
-
-    time_str = ds_0.time.dt.strftime("%Y-%m-%d %H:%M").item()
-    title = fig.suptitle(f"Precipitation Comparison at {time_str}")
-
-    def update(frame_index):
-        ds_frame = ds_subset.isel(time=frame_index)
-
-        era5_plot.set_array(ds_frame["era5_tp"].values.ravel())
-        pred_plot.set_array(ds_frame["pred_precipitation"].values.ravel())
-
-        new_time_str = ds_frame.time.dt.strftime("%Y-%m-%d %H:%M").item()
-        title.set_text(f"Precipitation Comparison at {new_time_str}")
-
-        return era5_plot, pred_plot, title
-
-    # blit=False prevents the AttributeError with fig.suptitle
-    ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=200, blit=False)
-
-    if save_path:
-        writer = animation.FFMpegWriter(fps=5, bitrate=1800)
-        ani.save(save_path, writer=writer)
-        plt.close(fig)
-    elif 'get_ipython' in globals() and 'IPython' in globals():
-        from IPython.display import HTML
-        plt.close(fig)
-        return HTML(ani.to_jshtml())
-    else:
-        plt.tight_layout()
-        plt.show()
 
 def check_data_health(combined_ds, time_index=0):
     ds_time = combined_ds.isel(time=time_index)
@@ -162,17 +77,89 @@ def debug_spategan_nans(spategan_path: Path | str, combined_ds: xr.Dataset):
             pixel_count = int(valid_pixels_per_time[idx].values)
             print(f"  - Index: {idx:3d} | Timestamp: {timestamp} | Valid pixels: {pixel_count}")
 
+
+def compare_dataset_structures(file_path_1: Path, file_path_2: Path) -> dict:
+    """Compare variables and dimensions of two datasets and print a formatted table."""
+    engine1 = "cfgrib" if str(file_path_1).endswith(".grib2") else None
+    engine2 = "cfgrib" if str(file_path_2).endswith(".grib2") else None
+
+    ds1 = xr.open_dataset(file_path_1, engine=engine1)
+    ds2 = xr.open_dataset(file_path_2, engine=engine2)
+
+    v_match = list(set(ds1.data_vars).intersection(ds2.data_vars))
+    v_only1 = list(set(ds1.data_vars) - set(ds2.data_vars))
+    v_only2 = list(set(ds2.data_vars) - set(ds1.data_vars))
+
+    d_match = list(set(ds1.dims).intersection(ds2.dims))
+    d_only1 = list(set(ds1.dims) - set(ds2.dims))
+    d_only2 = list(set(ds2.dims) - set(ds1.dims))
+
+    n1, n2 = file_path_1.name, file_path_2.name
+    w = max(len(n1), len(n2), 15)
+
+    def build_table(title, only1, match, only2):
+        lines = [
+            f"\n{title:^{w*3 + 6}}",
+            f"{n1:^{w}} | {'Common':^{w}} | {n2:^{w}}",
+            "-" * (w * 3 + 6)
+        ]
+        for row in itertools.zip_longest(only1, match, only2, fillvalue=""):
+            lines.append(f"{row[0]:^{w}} | {row[1]:^{w}} | {row[2]:^{w}}")
+        lines.append("-" * (w * 3 + 6))
+        return "\n".join(lines)
+
+    # Using print to avoid logger prefixes breaking the table alignment
+    print(build_table(" VARIABLES ", v_only1, v_match, v_only2))
+    print(build_table(" DIMENSIONS ", d_only1, d_match, d_only2))
+
+    return {
+        "matching_variables": v_match,
+        "variables_only_in_ds1": v_only1,
+        "variables_only_in_ds2": v_only2,
+        "matching_dimensions": d_match,
+        "dimensions_only_in_ds1": d_only1,
+        "dimensions_only_in_ds2": d_only2,
+    }
+
+
 if __name__ == "__main__":
     era5_file = Path("data/era5_2026-03-01_to_2026-03-04_clean.nc")
     spategan_file = Path("output/utm/spateGAN_ERA5_latlon_52.12N_6.88E_20260301_20260303_e10.nc")
 
     if era5_file.exists() and spategan_file.exists():
-        combined_dataset = visualize_matched_datasets(era5_file, spategan_file)
+
+        spategan_ds = xr.open_dataset(spategan_file)
+        era5_ds = xr.open_dataset(era5_file)
+        combined_dataset = _combine_datasets(era5_ds, spategan_ds)
         visualize_precipitation_map(combined_dataset)
 
         # Call this before your visualization function
         check_data_health(combined_dataset, time_index=0)
         debug_spategan_nans(spategan_file, combined_dataset)
-        create_precipitation_animation(combined_dataset, num_frames=24, save_path="output/precipitation_animation.mp4")
+
+        # 1. Define your configuration and paths
+        project_root = Path.cwd()
+        config = {
+            "data": {
+                "plots_path": "plots/animations"
+            },
+            "processing": {
+                "seed": 42  # Add this block
+            }
+        }
+
+
+
+        # 2. Instantiate the Plots class with your loaded datasets
+        plotter = Plots(
+            predictions_utm=spategan_ds, # Your loaded prediction dataset
+            ds_utm_28=era5_ds,             # Your loaded ground truth dataset
+            project_root=project_root,
+            config=config
+        )
+
+        # 3. Run the animation
+        # To save as a file:
+        plotter.create_precipitation_animation(num_frames=24, save_filename="precip_comparison.mp4")
     else:
         print("Dataset paths do not exist. Please check the file locations.")

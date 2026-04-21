@@ -3,10 +3,11 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from matplotlib import animation
 import pandas as pd
 import xarray as xr
 
-from src.spategan_era5.utils import generate_output_filename
+from src.spategan_era5.utils import _combine_datasets, _combine_datasets, generate_output_filename
 
 import matplotlib
 
@@ -140,3 +141,62 @@ class Plots:
 
         except Exception as e:
             logger.exception("Error creating forecast plots: %s", e)
+
+    def create_precipitation_animation(self, num_frames=24, save_filename=None):
+            combined_ds = _combine_datasets(self.ds_utm_28, self.predictions_utm)
+
+            if len(combined_ds.time) < num_frames:
+                num_frames = len(combined_ds.time)
+            ds_subset = combined_ds.isel(time=slice(0, num_frames)).copy()
+
+            ds_subset["era5_tp"] = ds_subset["era5_tp"] * 1000
+
+            fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+            era5_max = ds_subset["era5_tp"].max().item()
+            pred_max = ds_subset["pred_precipitation"].max().item()
+            global_max = max(era5_max, pred_max)
+
+            ds_0 = ds_subset.isel(time=0)
+
+            # Plotting
+            era5_plot = ds_0["era5_tp"].plot(
+                ax=axes[0], cmap="YlGnBu", vmin=0, vmax=global_max,
+                cbar_kwargs={"label": "Precipitation (mm)"}, add_colorbar=True
+            )
+            axes[0].set_title("Ground Truth (ERA5 Interpolated)")
+
+            pred_plot = ds_0["pred_precipitation"].plot(
+                ax=axes[1], cmap="YlGnBu", vmin=0, vmax=global_max,
+                cbar_kwargs={"label": "Precipitation (mm)"}, add_colorbar=True
+            )
+            axes[1].set_title("Prediction (SpateGAN)")
+
+            time_str = ds_0.time.dt.strftime("%Y-%m-%d %H:%M").item()
+            title = fig.suptitle(f"Precipitation Comparison at {time_str}")
+
+            def update(frame_index):
+                ds_frame = ds_subset.isel(time=frame_index)
+
+                era5_plot.set_array(ds_frame["era5_tp"].values.ravel())
+                pred_plot.set_array(ds_frame["pred_precipitation"].values.ravel())
+
+                new_time_str = ds_frame.time.dt.strftime("%Y-%m-%d %H:%M").item()
+                title.set_text(f"Precipitation Comparison at {new_time_str}")
+
+                return era5_plot, pred_plot, title
+
+            ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=200, blit=False)
+
+            if save_filename:
+                save_path = self.plots_dir / save_filename
+                writer = animation.FFMpegWriter(fps=5, bitrate=1800)
+                ani.save(save_path, writer=writer)
+                plt.close(fig)
+            elif 'get_ipython' in globals() and 'IPython' in globals():
+                from IPython.display import HTML
+                plt.close(fig)
+                return HTML(ani.to_jshtml())
+            else:
+                plt.tight_layout()
+                plt.show()
