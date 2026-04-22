@@ -206,7 +206,7 @@ def save_outputs(
     output_latlon_dir: Path | None,
     config: dict,
     save_model_input: bool = False,
-) -> None:
+) -> tuple[Path | None, Path | None]:
     """Save prediction outputs to files.
 
     Args:
@@ -217,12 +217,18 @@ def save_outputs(
         config: Configuration dictionary.
         save_model_input: Whether to save model input alongside predictions.
     """
+
+    utm_filename = None
+    latlon_filename = None
+
+
     if output_latlon_dir:
         output_latlon_dir.mkdir(parents=True, exist_ok=True)
 
         predictions_latlon = utm_to_latlon(predictions_utm, resolution=0.018)
 
         filename = generate_output_filename(predictions_latlon, config, projection="latlon")
+        latlon_filename = filename
         predictions_latlon.to_netcdf(output_latlon_dir / filename)
         logger.info("Saved: %s", output_latlon_dir / filename)
 
@@ -236,6 +242,7 @@ def save_outputs(
         output_utm_dir.mkdir(parents=True, exist_ok=True)
 
         filename = generate_output_filename(predictions_utm, config, projection="utm")
+        utm_filename = filename
         predictions_utm.to_netcdf(output_utm_dir / filename)
         logger.info("Saved: %s", output_utm_dir / filename)
 
@@ -244,6 +251,7 @@ def save_outputs(
             ds_utm_28.to_netcdf(output_utm_dir / filename_era)
             logger.info("Saved: %s", output_utm_dir / filename_era)
 
+    return utm_filename, latlon_filename
 
 def fill_nans_if_sparse(ds: xr.Dataset, threshold=0.01) -> xr.Dataset:
     # total number of values across all variables
@@ -267,7 +275,7 @@ def fill_nans_if_sparse(ds: xr.Dataset, threshold=0.01) -> xr.Dataset:
         return ds
 
 
-def run_downscaling_pipeline(config: dict, project_root: Path) -> output_utm_dir:
+def run_downscaling_pipeline(config: dict, project_root: Path) -> tuple[Path | None, Path | None]:
     """Run the complete downscaling pipeline.
 
     This is the main orchestration function that wires together all
@@ -334,7 +342,7 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> output_utm_dir
         if config["data"].get("output_latlon_path") else None
     )
 
-    save_outputs(
+    utm_filename, latlon_filename = save_outputs(
         predictions_utm=predictions_utm,
         ds_utm_28=ds_utm_28,
         output_utm_dir=output_utm_dir,
@@ -345,3 +353,5 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> output_utm_dir
 
 
     logger.info("Downscaling pipeline completed successfully!")
+
+    return utm_filename, latlon_filename

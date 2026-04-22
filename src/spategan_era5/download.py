@@ -9,7 +9,7 @@ import itertools
 import yaml
 from datetime import datetime, timedelta
 
-from .analysis import compare_dataset_structures
+from src.spategan_era5.analysis import compare_dataset_structures
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
     raw_filename = out_dir / f"ecmwf_{date}_aifs.grib2"
     clean_filename = out_dir / f"ecmwf_{date}_clean.nc"
 
-<<<<<<< HEAD
     if clean_filename.exists():
         logger.info(f"Skipping: Processed file {clean_filename} already exists.")
         return clean_filename
@@ -29,20 +28,15 @@ def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
     else:
 
         logger.info(f"Downloading AIFS data for date '{date}' and steps '{forecast_steps}'")
-        client = Client(source="azure", model="aifs-single")
+        client = Client(source="ecmwf", model="aifs-single")
         client.retrieve(
-=======
-    logger.info(f"Downloading AIFS data for date '{date}' and steps '{forecast_steps}'")
-    client = Client(source="ecmwf", model="aifs-single") #historic data under source='azure'
-    client.retrieve(
->>>>>>> ecwmf_aifs
-            date=date,
-            time=0,
-            step=forecast_steps,
-            type="fc",
-            param=["cp", "tp"],
-            target=str(raw_filename),
-        )
+                date=date,
+                time=0,
+                step=forecast_steps,
+                type="fc",
+                param=["cp", "tp"],
+                target=str(raw_filename),
+            )
 
     ds = xr.open_dataset(raw_filename, engine="cfgrib")
     ds = ds.rename({
@@ -65,7 +59,6 @@ def prepare_ecmwf_data(out_dir: Path, date: str, forecast_steps: list) -> Path:
 
     return clean_filename
 
-<<<<<<< HEAD
 def download_era5(out_dir: Path, start_date: str, end_date: str) -> Path:
     """Download historical ERA5 data from Copernicus CDS."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -152,5 +145,3 @@ def _compare_data():
 
 if __name__ == "__main__":
     _compare_data()
-=======
->>>>>>> ecwmf_aifs

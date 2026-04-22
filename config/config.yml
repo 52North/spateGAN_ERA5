@@ -3,7 +3,7 @@
 # currently downscaling of a time sequence at a fixed domain is supported
 
 mode:
-  type: downscaling # options: downscaling, validation
+  type: downscaling # options: downscaling, validation, both
 # ============================================================================
 # Data Paths
 # ============================================================================
@@ -49,7 +49,7 @@ time:
 
 validation:
   era5_validation_path: "data/era5_2026-03-01_to_2026-03-04_clean.nc" # ERA5 data to compare with spateGAN output, should be reprojected to UTM and subset to the same domain as spateGAN output
-  spategan_path: "output/utm/spateGAN_ERA5_latlon_52.12N_6.88E_20260301_20260303_e10.nc"
+  spategan_path: null
 
 
 # ============================================================================

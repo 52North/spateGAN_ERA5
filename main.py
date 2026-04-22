@@ -152,22 +152,29 @@ def main() -> int:
 
     # Run pipeline
     try:
-        if mode == "downscaling":
+        if mode in ["downscaling", "both"]:
                     logger.info("Starting downscaling: center=(%.2f°N, %.2f°E), device=%s",
                                 config["domain"]["center_lat"],
                                 config["domain"]["center_lon"],
                                 config["processing"]["device"])
 
                     from src.spategan_era5.pipeline import run_downscaling_pipeline
-                    run_downscaling_pipeline(config, PROJECT_ROOT)
+                    utm_filename, latlon_filename = run_downscaling_pipeline(config, PROJECT_ROOT)
 
-        elif mode == "validation":
+        if mode in ["validation", "both"]:
             logger.info("Starting validation analysis...")
+
+            spategan_file = config.get("validation", {}).get("spategan_file_path")
+
+            if not spategan_file or mode == "both":
+                if not utm_filename:
+                    raise ValueError("spategan_file_path is null and downscaling was not run to generate it.")
+                spategan_file = utm_filename
 
             from src.spategan_era5.analysis import compare_prediction
             compare_prediction(
                 era5_file=Path(config["validation"]["era5_path"]),
-                spategan_file=Path(config["validation"]["spategan_file_path"])
+                spategan_file=Path(spategan_file)
             )
 
         else:
