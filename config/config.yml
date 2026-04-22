@@ -2,6 +2,8 @@
 # Configuration for ERA5 precipitation downscaling from lat-lon to UTM projection
 # currently downscaling of a time sequence at a fixed domain is supported
 
+mode:
+  type: downscaling # options: downscaling, validation
 # ============================================================================
 # Data Paths
 # ============================================================================
@@ -44,6 +46,10 @@ time:
   # If null, the entire dataset is processed
   start_date: null  # e.g., '2010-01-01T06:00:00.000000000'
   end_date: null    # e.g., '2010-01-05T06:00:00.000000000'
+
+validation:
+  era5_validation_path: "data/era5_2026-03-01_to_2026-03-04_clean.nc" # ERA5 data to compare with spateGAN output, should be reprojected to UTM and subset to the same domain as spateGAN output
+  spategan_path: "output/utm/spateGAN_ERA5_latlon_52.12N_6.88E_20260301_20260303_e10.nc"
 
 
 # ============================================================================

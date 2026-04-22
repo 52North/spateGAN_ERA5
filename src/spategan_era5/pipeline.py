@@ -39,26 +39,26 @@ def load_era5_data(
     end_date: str | None = None,
 ) -> tuple[xr.Dataset, str]:
     """Load and prepare ERA5 dataset.
-    
+
     Args:
         input_path: Path to input NetCDF file.
         precip_unit: Unit of precipitation in input data.
         required_hours: Minimum required time steps in hours.
         start_date: Optional start date for filtering.
         end_date: Optional end date for filtering.
-        
+
     Returns:
         Tuple of (prepared dataset, variable name).
-        
+
     Raises:
         FileNotFoundError: If input file doesn't exist.
         ValueError: If data validation fails.
     """
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
-    
+
     logger.info("Loading ERA5 data from %s", input_path)
-    
+
     ds_era5, variable_name = load_and_prepare_dataset(
         str(input_path),
         precip_unit=precip_unit,
@@ -67,14 +67,14 @@ def load_era5_data(
         start_date=start_date,
         end_date=end_date,
     )
-    
+
     logger.info("Loaded %d time steps: lat [%.1f, %.1f]°, lon [%.1f, %.1f]°",
                 len(ds_era5.time),
                 float(ds_era5.lat.min()),
                 float(ds_era5.lat.max()),
                 float(ds_era5.lon.min()),
                 float(ds_era5.lon.max()))
-    
+
     return ds_era5, variable_name
 
 
@@ -88,7 +88,7 @@ def extract_patch(
     required_hours: int,
 ) -> tuple[xr.Dataset, dict, tuple[float, float]]:
     """Validate domain and extract patch for processing.
-    
+
     Args:
         ds: ERA5 dataset in lat-lon projection.
         center_lat: Center latitude of patch.
@@ -97,15 +97,15 @@ def extract_patch(
         patch_padding_km: Padding around patch in kilometers.
         extra_padding_cells: Extra cells for projection padding.
         required_hours: Minimum required hours of data.
-        
+
     Returns:
         Tuple of (sliced dataset, slicing info, (center_lat, center_lon)).
-        
+
     Raises:
         ValueError: If patch extraction validation fails.
     """
     logger.info("Validating patch extraction...")
-    
+
     validate_patch_extraction(
         center_lat=center_lat,
         center_lon=center_lon,
@@ -116,11 +116,11 @@ def extract_patch(
         lon_west=float(ds.lon.min().values),
         lon_east=float(ds.lon.max().values),
     )
-    
+
     validate_time_dimension(ds, required_hours=required_hours)
-    
+
     logger.info("Extracting patch centered at (%.4f°N, %.4f°E)...", center_lat, center_lon)
-    
+
     ds_sliced, slicing_info = slice_data_for_projection(
         ds=ds,
         center_lat=center_lat,
@@ -128,9 +128,9 @@ def extract_patch(
         target_domain_size_km=672.0,
         extra_padding_cells=extra_padding_cells,
     )
-    
+
     actual_center = calculate_domain_center(ds_sliced)
-    
+
     return ds_sliced, slicing_info, actual_center
 
 
@@ -140,12 +140,12 @@ def project_to_utm(
     center_lon: float,
 ) -> tuple[xr.Dataset, xr.Dataset]:
     """Project data to UTM coordinates at two resolutions.
-    
+
     Args:
         ds: Dataset in lat-lon projection.
         center_lat: Center latitude for UTM zone.
         center_lon: Center longitude for UTM zone.
-        
+
     Returns:
         Tuple of (high-res 336x336 dataset, low-res 28x28 dataset).
     """
@@ -153,12 +153,12 @@ def project_to_utm(
         ds, center_lat=center_lat, center_lon=center_lon,
         target_size=336, grid_spacing=2000, method="nearest",
     )
-    
+
     ds_utm_28 = latlon_to_utm(
         ds, center_lat=center_lat, center_lon=center_lon,
         target_size=28, grid_spacing=24000, method="nearest",
     )
-    
+
     return ds_utm_336, ds_utm_28
 
 
@@ -168,34 +168,34 @@ def run_inference(
     config: dict,
 ) -> xr.Dataset:
     """Run model inference on prepared data.
-    
+
     Args:
         ds_utm_28: Low-resolution UTM input dataset.
         ds_utm_336: High-resolution UTM dataset for output template.
         config: Configuration dictionary.
-        
+
     Returns:
         Prediction dataset in UTM projection.
     """
     ds_utm_pred = prediction_output_dataset(ds_utm_336)
-    
+
     inference = ERA5DownscalingInference(
         config=config,
         device=config["processing"]["device"],
         seed=config["processing"]["seed"],
     )
-    
+
     x_tensor = inference.prepare_tensor_dataset(
         ds_utm_28, variable_names=list(ds_utm_28.data_vars)
     )
-        
+
     logger.info("Running inference...")
     predictions = inference.predict_sliding_window(
         x_tensor,
         ds_prediction=ds_utm_pred,
         slide=config["inference"]["stride_hours"],
     )
-    
+
     return predictions
 
 
@@ -208,7 +208,7 @@ def save_outputs(
     save_model_input: bool = False,
 ) -> None:
     """Save prediction outputs to files.
-    
+
     Args:
         predictions_utm: Predictions in UTM projection.
         ds_utm_28: Model input in UTM projection.
@@ -219,26 +219,26 @@ def save_outputs(
     """
     if output_latlon_dir:
         output_latlon_dir.mkdir(parents=True, exist_ok=True)
-        
+
         predictions_latlon = utm_to_latlon(predictions_utm, resolution=0.018)
-        
+
         filename = generate_output_filename(predictions_latlon, config, projection="latlon")
         predictions_latlon.to_netcdf(output_latlon_dir / filename)
         logger.info("Saved: %s", output_latlon_dir / filename)
-        
+
         if save_model_input:
             ds_latlon = utm_to_latlon(ds_utm_28, resolution=0.25)
             filename_era = generate_output_filename(ds_latlon, config, projection="latlon", model="era5")
             ds_latlon.to_netcdf(output_latlon_dir / filename_era)
             logger.info("Saved: %s", output_latlon_dir / filename_era)
-    
+
     if output_utm_dir:
         output_utm_dir.mkdir(parents=True, exist_ok=True)
-        
+
         filename = generate_output_filename(predictions_utm, config, projection="utm")
         predictions_utm.to_netcdf(output_utm_dir / filename)
         logger.info("Saved: %s", output_utm_dir / filename)
-        
+
         if save_model_input:
             filename_era = generate_output_filename(ds_utm_28, config, projection="utm", model="era5")
             ds_utm_28.to_netcdf(output_utm_dir / filename_era)
@@ -267,16 +267,16 @@ def fill_nans_if_sparse(ds: xr.Dataset, threshold=0.01) -> xr.Dataset:
         return ds
 
 
-def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
+def run_downscaling_pipeline(config: dict, project_root: Path) -> output_utm_dir:
     """Run the complete downscaling pipeline.
-    
+
     This is the main orchestration function that wires together all
     pipeline stages: load -> extract -> project -> infer -> save.
-    
+
     Args:
         config: Configuration dictionary.
         project_root: Project root directory.
-        
+
     Raises:
         FileNotFoundError: If input file doesn't exist.
         ValueError: If validation fails.
@@ -290,7 +290,7 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
         start_date=config["time"].get("start_date"),
         end_date=config["time"].get("end_date"),
     )
-    
+
     # Stage 2: Extract patch
     ds_sliced, _, center_coords = extract_patch(
         ds=ds_era5,
@@ -301,18 +301,18 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
         extra_padding_cells=config["projection"]["extra_padding_cells"],
         required_hours=16,
     )
-    
+
     logger.info("running UTM projection")
-    
+
     # Stage 3: Project to UTM
     ds_utm_336, ds_utm_28 = project_to_utm(ds_sliced, *center_coords)
-    
+
     # Stage 3.1: Fill NaNs if sparse
     ds_utm_28 = fill_nans_if_sparse(ds_utm_28, threshold=config.get("data", {}).get("nan_fill_threshold", 0.01))
-        
+
     # Stage 4: Run inference
     predictions_utm = run_inference(ds_utm_28, ds_utm_336, config)
-    
+
     # Stage 4: Plot precipitation maps (optional)
     # Optional simple plotting
     try:
@@ -323,7 +323,7 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
     except Exception:
         # _create_precipitation_sums_plot logs its own errors
         pass
-    
+
     # Stage 5: Save outputs
     output_utm_dir = (
         project_root / config["data"]["output_utm_path"]
@@ -333,7 +333,7 @@ def run_downscaling_pipeline(config: dict, project_root: Path) -> None:
         project_root / config["data"]["output_latlon_path"]
         if config["data"].get("output_latlon_path") else None
     )
-    
+
     save_outputs(
         predictions_utm=predictions_utm,
         ds_utm_28=ds_utm_28,

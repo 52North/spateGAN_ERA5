@@ -122,10 +122,7 @@ def compare_dataset_structures(file_path_1: Path, file_path_2: Path) -> dict:
     }
 
 
-if __name__ == "__main__":
-    era5_file = Path("data/era5_2026-03-01_to_2026-03-04_clean.nc")
-    spategan_file = Path("output/utm/spateGAN_ERA5_latlon_52.12N_6.88E_20260301_20260303_e10.nc")
-
+def compare_prediction(era5_file = Path("data/era5_2026-03-01_to_2026-03-04_clean.nc"), spategan_file = Path("output/utm/spateGAN_ERA5_latlon_52.12N_6.88E_20260301_20260303_e10.nc")):
     if era5_file.exists() and spategan_file.exists():
 
         spategan_ds = xr.open_dataset(spategan_file)
@@ -163,3 +160,7 @@ if __name__ == "__main__":
         plotter.create_precipitation_animation(num_frames=24, save_filename="precip_comparison.mp4")
     else:
         print("Dataset paths do not exist. Please check the file locations.")
+
+
+if __name__ == "__main__":
+    compare_prediction(era5_file = Path("data/era5_2026-03-01_to_2026-03-04_clean.nc"), spategan_file = Path("output/utm/spateGAN_ERA5_latlon_52.12N_6.88E_20260301_20260303_e10.nc"))

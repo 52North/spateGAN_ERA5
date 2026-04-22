@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 import xarray as xr
+from src.spategan_era5.analysis import compare_prediction
 from ecmwf.opendata import Client
 
 # Setup paths before imports
@@ -53,7 +54,9 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", type=str, choices=["cuda", "cpu"], help="Compute device")
     parser.add_argument("--seed", type=int, help="Random seed")
     parser.add_argument("--stride", type=int, choices=range(1, 9), metavar="[1-8]",
-                        help="Sliding window stride (hours)")
+                        help="Sliding window stride (hours)"),
+    parser.add_argument("--mode", type=str, choices=["downscaling", "validation"], help="Execution mode")
+    parser.add_argument("--era5-path", type=str, help="Path to ERA5 NetCDF file for validation")
     # AIFS specific fields
     parser.add_argument("--download-aifs", action="store_true")
     parser.add_argument("--forecast-date", type=str, help="Format: YYYYMMDD")
@@ -91,6 +94,8 @@ def apply_cli_overrides(config: dict, args: argparse.Namespace) -> dict:
         ("processing", "seed"): args.seed,
         ("processing", "device"): args.device,
         ("inference", "stride_hours"): args.stride,
+        ("mode", "type"): args.mode,
+        ("validation", "era5_validation_path"): args.era5_path,
     }
 
     for (section, key), value in overrides.items():
@@ -142,10 +147,33 @@ def main() -> int:
                 config["domain"]["center_lon"],
                 config["processing"]["device"])
 
+    # Execute selected mode
+    mode = config.get("mode", {}).get("type", "downscaling")
+
     # Run pipeline
     try:
-        from src.spategan_era5.pipeline import run_downscaling_pipeline
-        run_downscaling_pipeline(config, PROJECT_ROOT)
+        if mode == "downscaling":
+                    logger.info("Starting downscaling: center=(%.2f°N, %.2f°E), device=%s",
+                                config["domain"]["center_lat"],
+                                config["domain"]["center_lon"],
+                                config["processing"]["device"])
+
+                    from src.spategan_era5.pipeline import run_downscaling_pipeline
+                    run_downscaling_pipeline(config, PROJECT_ROOT)
+
+        elif mode == "validation":
+            logger.info("Starting validation analysis...")
+
+            from src.spategan_era5.analysis import compare_prediction
+            compare_prediction(
+                era5_file=Path(config["validation"]["era5_path"]),
+                spategan_file=Path(config["validation"]["spategan_file_path"])
+            )
+
+        else:
+            logger.error("Unknown mode: %s", mode)
+            return 1
+
         return 0
     except FileNotFoundError as e:
         logger.error("File not found: %s", e)
@@ -156,7 +184,6 @@ def main() -> int:
     except Exception as e:
         logger.exception("Unexpected error: %s", e)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())
