@@ -142,14 +142,11 @@ def main() -> int:
                 logger.error(f"Failed to prepare AIFS data: {e}")
                 return 1
 
-    logger.info("Starting downscaling: center=(%.2f°N, %.2f°E), device=%s",
-                config["domain"]["center_lat"],
-                config["domain"]["center_lon"],
-                config["processing"]["device"])
-
     # Execute selected mode
     mode = config.get("mode", {}).get("type", "downscaling")
 
+    utm_filename = None
+    latlon_filename = None
     # Run pipeline
     try:
         if mode in ["downscaling", "both"]:
@@ -167,19 +164,13 @@ def main() -> int:
             spategan_file = config.get("validation", {}).get("spategan_file_path")
 
             if not spategan_file or mode == "both":
-                if not utm_filename:
-                    raise ValueError("spategan_file_path is null and downscaling was not run to generate it.")
-                spategan_file = utm_filename
+                raise ValueError("spategan_file_path is null and downscaling was not run to generate it.")
 
             from src.spategan_era5.analysis import compare_prediction
             compare_prediction(
-                era5_file=Path(config["validation"]["era5_path"]),
+                era5_file=Path(config["validation"]["era5_validation_path"]),
                 spategan_file=Path(spategan_file)
             )
-
-        else:
-            logger.error("Unknown mode: %s", mode)
-            return 1
 
         return 0
     except FileNotFoundError as e:
