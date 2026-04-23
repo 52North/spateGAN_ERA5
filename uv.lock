@@ -540,17 +540,8 @@ wheels = [
 ]
 
 [[package]]
-name = "ecmwf-api-client"
-version = "1.6.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/14/b5/837fa2daee28118c592cd003b910433894008d5a1f9e3bed9f2c3cabe34b/ecmwf_api_client-1.6.5.tar.gz", hash = "sha256:1fc0eba27163686b7fba5da027cc5dc0a361f75b652508fa7805f50599368b1c", size = 12974, upload-time = "2025-03-10T10:27:25.057Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/f3/7a5832d5fb8e16db4d1f3be58fcb2537e68ccffea1270bff8b65de7c85b5/ecmwf_api_client-1.6.5-py3-none-any.whl", hash = "sha256:82678c2c18083b44be74b23e2a7e82d2343061966c0bf3a895272b9e9a802836", size = 13495, upload-time = "2025-03-10T10:27:24.215Z" },
-]
-
-[[package]]
 name = "ecmwf-datastores-client"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -558,9 +549,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/76/41/3686457e004d6d8ee02daf4394166f758ce9f231555d22c0f70259bc09d4/ecmwf_datastores_client-0.5.0.tar.gz", hash = "sha256:ec5c546422a60836d5427e023320b4e9b12d9bc90270cbd5bf389fb569ba7029", size = 48858, upload-time = "2026-03-18T12:07:46.897Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/5e/99ad10e2ea56b48a78f1755cb5af028721240d8cbf354d83d23410e3581f/ecmwf_datastores_client-0.5.1.tar.gz", hash = "sha256:0ebf6304dc267befa506ce805208d5c7a675e1b0dd76da1dad5dc8501d318cc4", size = 48879, upload-time = "2026-03-31T10:48:14.709Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/4e/f22403ab6fc973643f480e9934e686e689c18dcd6fd2e870cf4f054fd35f/ecmwf_datastores_client-0.5.0-py3-none-any.whl", hash = "sha256:3b3e6a6848c7be5af659a278f4d127844a05b192b38bfb5705a777bba5ce3e45", size = 29197, upload-time = "2026-03-18T12:07:45.466Z" },
+    { url = "https://files.pythonhosted.org/packages/13/a6/27bc3c51cf862c8b70bc8fe21b812b9c1ca6f31ecee9def96c82d93f003b/ecmwf_datastores_client-0.5.1-py3-none-any.whl", hash = "sha256:3dce212f2da773e22f509c25c7c10144789658107e0a37d09e02cbeffc38ec57", size = 29196, upload-time = "2026-03-31T10:48:13.463Z" },
 ]
 
 [[package]]
@@ -671,6 +662,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/00/f7/27f15d41f0ed38e8fcc488584b57e902b331da7f7c6dcda53721b15838fc/fsspec-2025.5.1.tar.gz", hash = "sha256:2e55e47a540b91843b755e83ded97c6e897fa0942b11490113f09e9c443c2475", size = 303033, upload-time = "2025-05-24T12:03:23.792Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bb/61/78c7b3851add1481b048b5fdc29067397a1784e2910592bc81bb3f608635/fsspec-2025.5.1-py3-none-any.whl", hash = "sha256:24d3a2e663d5fc735ab256263c4075f374a174c3410c0b25e5bd1970bceaa462", size = 199052, upload-time = "2025-05-24T12:03:21.66Z" },
+]
+
+[[package]]
+name = "h5netcdf"
+version = "1.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ef/03/92d6cc02c0055158167255980461155d6e17f1c4143c03f8bcc18d3e3f3a/h5netcdf-1.8.1.tar.gz", hash = "sha256:9b396a4cc346050fc1a4df8523bc1853681ec3544e0449027ae397cb953c7a16", size = 78679, upload-time = "2026-01-23T07:35:31.233Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/8b/88f16936a8e8070a83d36239555227ecd91728f9ef222c5382cda07e0fd6/h5netcdf-1.8.1-py3-none-any.whl", hash = "sha256:a76ed7cfc9b8a8908ea7057c4e57e27307acff1049b7f5ed52db6c2247636879", size = 62915, upload-time = "2026-01-23T07:35:30.195Z" },
 ]
 
 [[package]]
@@ -2310,9 +2315,9 @@ dependencies = [
     { name = "cdsapi" },
     { name = "cfgrib" },
     { name = "eccodes" },
-    { name = "ecmwf-api-client" },
     { name = "ecmwf-opendata" },
     { name = "einops" },
+    { name = "h5netcdf" },
     { name = "ipykernel" },
     { name = "matplotlib" },
     { name = "netcdf4" },
@@ -2345,9 +2350,9 @@ requires-dist = [
     { name = "cdsapi", specifier = ">=0.7.7" },
     { name = "cfgrib", specifier = ">=0.9.15.1" },
     { name = "eccodes", specifier = ">=2.46.0" },
-    { name = "ecmwf-api-client", specifier = ">=1.6.5" },
     { name = "ecmwf-opendata", specifier = ">=0.3.26" },
     { name = "einops", specifier = ">=0.6.0" },
+    { name = "h5netcdf", specifier = ">=1.8.1" },
     { name = "ipykernel" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "matplotlib", specifier = ">=3.7.0" },
